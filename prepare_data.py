@@ -46,6 +46,9 @@ def prepare_all_in_dir(dname, outname, wsize=6, col_name='Adj Close', date_name=
                 fout.write(window_to_str(row, debug_info=debug_info)) 
                 fout.write('\n')
 
-prepare_all_in_dir('daily_prices', 'training.tsv', first_date=dparse('2010-01-01'), last_date=dparse('2015-12-31'), debug_info=False)
+# prepare_all_in_dir('daily_prices', 'training.tsv', first_date=dparse('2010-01-01'), last_date=dparse('2015-12-31'), debug_info=False)
 
-prepare_all_in_dir('daily_prices', 'test.tsv', first_date=dparse('2016-01-01'), debug_info=False)
+# prepare_all_in_dir('daily_prices', 'test.tsv', first_date=dparse('2016-01-01'), debug_info=False)
+
+
+prepare_all_in_dir('../data/test', 'debug.tsv', first_date=dparse('2010-01-01'), last_date=dparse('2015-12-31'), debug_info=False)
