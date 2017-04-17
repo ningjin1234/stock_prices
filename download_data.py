@@ -8,6 +8,7 @@ https://www.quandl.com
 
 # symbol for S&P500 is %5EGSPC (^GSPC)
 # to get dividend and date: http://ichart.finance.yahoo.com/table.csv?s=MSFT&g=v (it only gives dividend and date)
+# g=m gives monthly data; g=w gives weekly data
 URL_TEMPLATE = 'http://ichart.finance.yahoo.com/table.csv?s=%s'
 
 def get_data_for_symbol(symbol, fname=None, path='.', mute=False):
