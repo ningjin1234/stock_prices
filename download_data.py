@@ -1,6 +1,7 @@
 import urllib.request as url
 import datetime as dt
 
+# symbol for S&P500 is %5EGSPC
 URL_TEMPLATE = 'http://ichart.finance.yahoo.com/table.csv?s=%s'
 
 def get_data_for_symbol(symbol, fname=None, path='.', mute=False):
