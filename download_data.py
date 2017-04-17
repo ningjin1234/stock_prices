@@ -1,6 +1,11 @@
 import urllib.request as url
 import datetime as dt
 
+'''
+potential source for more data:
+https://www.quandl.com
+'''
+
 # symbol for S&P500 is %5EGSPC (^GSPC)
 # to get dividend and date: http://ichart.finance.yahoo.com/table.csv?s=MSFT&g=v (it only gives dividend and date)
 URL_TEMPLATE = 'http://ichart.finance.yahoo.com/table.csv?s=%s'
