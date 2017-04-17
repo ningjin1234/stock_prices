@@ -12,11 +12,16 @@ https://www.quandl.com
 # a is start month (0 for January), b is start day (starts at 1), c is start year, 
 # d is end month (0 for January), e is end day, f is end year; for example:
 # &a=0&b=1&c=2010&d=3&e=17&f=2017
-URL_TEMPLATE = 'http://ichart.finance.yahoo.com/table.csv?s=%s'
+URL_TEMPLATE = 'http://ichart.finance.yahoo.com/table.csv?s=%s&g=%s'
+SDATE_TEMPLATE = '&a=%d&b=%d&c=%d'
 
-def get_data_for_symbol(symbol, fname=None, path='.', mute=False):
+# start_date is a list of integers: [year, month, day]; month begins at 1 and gets adjusted inside the function
+def get_data_for_symbol(symbol, fname=None, path='.', mute=False, start_date=None, data_type='d'):
     try:
-        response = url.urlopen(URL_TEMPLATE % symbol)
+        myurl = URL_TEMPLATE % (symbol, data_type)
+        if start_date is not None:
+            myurl += SDATE_TEMPLATE % (start_date[1]-1, start_date[2], start_date[0])
+        response = url.urlopen(myurl)
         lines = response.readlines()
         if fname is None:
             fname = '%s.txt' % symbol
