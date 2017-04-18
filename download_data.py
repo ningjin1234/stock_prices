@@ -46,9 +46,9 @@ def get_data_for_symbols(symbols, path='.', mute=False, start_date=None, data_ty
             get_data_for_symbol(s, path=path, mute=mute, start_date=start_date, data_type=data_type)
 
 symbols = []
-with open('test_symbols.txt', 'r') as fin:
+with open('symbols.txt', 'r') as fin:
     for line in fin.readlines():
         symbols += line.split(' ')
 if '' in symbols:
     symbols.remove('')
-get_data_for_symbols(symbols, start_date=[2010,1,1])
+get_data_for_symbols(symbols, path='../data/daily_prices/', start_date=[2010,1,1])
