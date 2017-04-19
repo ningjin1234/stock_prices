@@ -288,13 +288,17 @@ def getTextDataFromFile(fname, key='key', text='text', target='target', delimite
 def getNumDataFromFile(fname, inputLen, targetLen, delimiter='\t', inputStartId=1):
     inputs = []
     targets = []
+    line_num = 0
     with open(fname, 'r') as fin:
         header = fin.readline()
         for line in fin:
+            line_num += 1
             splitted = line.strip().split(delimiter)
             invec = []
             outvec = []
             splitted = splitted[inputStartId:]
+            if len(splitted) < inputLen+targetLen:
+                print(line_num)
             assert (len(splitted) >= inputLen+targetLen)
             for v in splitted[:inputLen]:
                 invec.append(float(v))
@@ -467,12 +471,12 @@ targets = [[-1,1,1,1,1,1], [1,-1,-1,-1,-1,-1], [1,1,-1,1,-1,1], [1,1,1,1,-1,-1],
 #              initWeightFile='tmp_outputs/binary_t5_%s_init_weights.txt'%cellType, trainedWeightFile='tmp_outputs/binary_t5_%s_trained_weights.txt'%cellType,
 #              lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 7], cell=cellType, miniBatchSize=11, tokenSize=5, nclass=2)
 # 
-inputs, targets = getNumDataFromFile('../preprocessed/training.tsv', 5, 1, inputStartId=0)
+inputs, targets = getNumDataFromFile('training.txt', 1716, 429, inputStartId=1)
 print(len(inputs))
 print(len(inputs[0]))
 targetBins = [-0.02, 0.02, 0.05]
 discretizeTargets(targets, targetBins)
 trainRnn(inputs, targets, None,
 #          trainedWeightFile='trained_weights.txt',
-         lr=0.01, epochs=10, rnnType='uni', task='perseq', stackedDimList=[25], cell='gru', miniBatchSize=4096, tokenSize=1, nclass=len(targetBins)+1, seed=43215)
+         lr=0.01, epochs=1, rnnType='uni', task='perseq', stackedDimList=[25], cell='gru', miniBatchSize=4096, tokenSize=429, nclass=len(targetBins)+1, seed=43215)
 

@@ -1,5 +1,7 @@
 import pandas as pd
 
+DELIMITER = '\t'
+
 def get_header(cols, wsize):
     header = 'Date'
     tmp_cols = list(cols)
@@ -7,7 +9,7 @@ def get_header(cols, wsize):
         tmp_cols.remove('Date')
     for i in range(wsize-1):
         for c in tmp_cols:
-            header += ',' + c + str(i)
+            header += DELIMITER + c + str(i)
     return header
 
 def prepare_joined_data(ifname, ofname, wsize=6, first_date=None, last_date=None):
@@ -29,8 +31,8 @@ def prepare_joined_data(ifname, ofname, wsize=6, first_date=None, last_date=None
                 cur_row = df_r.iloc[i+j].values
                 if prev_row is not None:
                     vals = (cur_row-prev_row)/prev_row
-                    row_str += ','
-                    row_str += ','.join(map(str, vals))
+                    row_str += DELIMITER
+                    row_str += DELIMITER.join(map(str, vals))
                 prev_row = cur_row
             fout.write(row_str + '\n')
 
