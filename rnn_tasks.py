@@ -1,6 +1,7 @@
 import pandas
 import tensorflow as tf
 import numpy as np
+from datetime import datetime as dt
 import unittest
 from tkdl_util import *
 from tensorflow.python.ops import array_ops
@@ -52,17 +53,17 @@ def getRnnLayers(stackedDimList, inputData, inputLens, cellTypes='rnn', acts=tf.
                 cells = getRnnCell(n, cell=cellType, nCells=2, act=act)
                 fwRnnCell = cells[0]
                 bwRnnCell = cells[1]
-                tmpSeq, tmp_states = tf.nn.bidirectional_dynamic_rnn(cell_fw=fwRnnCell, cell_bw=bwRnnCell, dtype=tf.float64, 
+                tmpSeq, tmp_states = tf.nn.bidirectional_dynamic_rnn(cell_fw=fwRnnCell, cell_bw=bwRnnCell, dtype=tf.float32, 
                                                                      sequence_length=inputLens, inputs=tmpInputs)
                 tmpInputs = tf.concat(2, [tmpSeq[0], tmpSeq[1]])
             elif rnnType == 'uni':
                 cell = getRnnCell(n, cell=cellType, nCells=1, act=act)
-                tmpSeq, tmp_states = tf.nn.dynamic_rnn(cell=cell, dtype=tf.float64, sequence_length=inputLens, inputs=tmpInputs)
+                tmpSeq, tmp_states = tf.nn.dynamic_rnn(cell=cell, dtype=tf.float32, sequence_length=inputLens, inputs=tmpInputs)
                 tmpInputs = tmpSeq
             elif rnnType == 'rev':
                 cell = getRnnCell(n, cell=cellType, nCells=1, act=act)
                 inputDataReversed = array_ops.reverse_sequence(input=tmpInputs, seq_lengths=inputLens, seq_dim=1, batch_dim=0)
-                raw_outputs_r, last_states = tf.nn.dynamic_rnn(cell=cell, dtype=tf.float64, sequence_length=inputLens, inputs=inputDataReversed)
+                raw_outputs_r, last_states = tf.nn.dynamic_rnn(cell=cell, dtype=tf.float32, sequence_length=inputLens, inputs=inputDataReversed)
                 tmpSeq = array_ops.reverse_sequence(input=raw_outputs_r, seq_lengths=inputLens, seq_dim=1, batch_dim=0)
                 tmpInputs = tmpSeq
             else:
@@ -79,22 +80,22 @@ def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
     inputLens = tf.placeholder(tf.int32, [None])
     if task.lower() in ['perseq']:
         if nclass <= 1:
-            targets = tf.placeholder(tf.float64, [None, 1])
+            targets = tf.placeholder(tf.float32, [None, 1])
         else:
             targets = tf.placeholder(tf.int32, [None])
     elif task.lower() in ['pertoken', 'perstep']:   # corresponds to same-length output type in tkdlu; all input seqs must have same length
         if nclass <= 1:
-            targets = tf.placeholder(tf.float64, [None, maxNumSteps])
+            targets = tf.placeholder(tf.float32, [None, maxNumSteps])
         else:
             targets = tf.placeholder(tf.int32, [None])
     else:
         raise ValueError("unsupported task type: %s" % task)        
 
     if initEmbeddings is not None:
-        embedding = tf.Variable(initEmbeddings, name='inputEmbeddings', trainable=False, dtype=tf.float64)
+        embedding = tf.Variable(initEmbeddings, name='inputEmbeddings', trainable=False, dtype=tf.float32)
         inputData = tf.nn.embedding_lookup(embedding, inputTokens)
     else:
-        inputTokens = tf.placeholder(tf.float64, [None, maxNumSteps, tokenSize])
+        inputTokens = tf.placeholder(tf.float32, [None, maxNumSteps, tokenSize])
         inputData = inputTokens
 
     cellTypes = scaleToList(cell, len(stackedDimList))
@@ -118,8 +119,8 @@ def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
         else:
             targets = tf.reshape(targets, [-1])
     nclass = 1 if nclass <= 1 else nclass
-    outputW = tf.get_variable("outputW", [nNeurons, nclass], dtype=tf.float64)
-    outputB = tf.get_variable("outputB", [nclass], dtype=tf.float64)
+    outputW = tf.get_variable("outputW", [nNeurons, nclass], dtype=tf.float32)
+    outputB = tf.get_variable("outputB", [nclass], dtype=tf.float32)
     prediction = tf.add(tf.matmul(outputs, outputW), outputB)
     if task.lower() in ['perseq']:
         if nclass <= 1:
@@ -163,7 +164,7 @@ def genTextParms(docs, embeddingFile):
         inputIds.append(ids)
     inputIds = np.asarray(inputIds, dtype=np.int32)
     lens = np.asarray(lens, dtype=np.int32)
-    embeddingArray = np.asarray(embeddingArray, dtype=np.float64)
+    embeddingArray = np.asarray(embeddingArray, dtype=np.float32)
     textParms['ids'] = inputIds
     textParms['lens'] = lens
     textParms['emb'] = embeddingArray
@@ -212,9 +213,9 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
         lens = np.asarray(lens, dtype=np.int32)
         maxNumSteps = max(lens)
         embeddingArray = None
-        inputIds = np.asarray(docs, dtype=np.float64)
+        inputIds = np.asarray(docs, dtype=np.float32)
         inputIds = np.reshape(inputIds, (ndocs, maxNumSteps, tokenSize))
-        labels = np.asarray(labels, dtype=np.float64)
+        labels = np.asarray(labels, dtype=np.float32)
         labels = np.reshape(labels, (-1, 1))
         if nclass>1:
             labels = np.asarray(labels, dtype=np.int32)
@@ -239,10 +240,10 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
             ws = sess.run(tf.trainable_variables())
             writeWeightsWithNames(ws, tf.trainable_variables(), stackedDimList, initWeightFile)
         feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels}
-        print('loss before training: %.14g' % (sess.run(loss, feed_dict=feed_dict)/ndocs))
+#         print('loss before training: %.14g' % (sess.run(loss, feed_dict=feed_dict)/ndocs))
         full_loss = get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, 
                                   labels, targets, task, maxNumSteps)
-        print('loss before training: %.7g' % full_loss)
+        print('loss before training: %.7g\t%s' % (full_loss, str(dt.now())))
         # print(sess.run(debugInfo, feed_dict=feed_dict))
         for i in range(epochs):
             for j in range(nbatches):
@@ -264,10 +265,10 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
 #                 print('\tbefore batch %d: %.14g' % (j, sess.run(loss, feed_dict=feed_dict)/(end-start)))
                 sess.run(learningStep, feed_dict=feed_dict)
             feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels}
-            print('loss after %d epochs: %.14g' % (i+1, sess.run(loss, feed_dict=feed_dict)/ndocs))
+#             print('loss after %d epochs: %.14g' % (i+1, sess.run(loss, feed_dict=feed_dict)/ndocs))
             full_loss = get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, 
                                       labels, targets, task, maxNumSteps)
-            print('loss after %d epochs: %.7g' % (i+1, full_loss))
+            print('loss after %d epochs: %.7g\t%s' % (i+1, full_loss, str(dt.now())))
         if trainedWeightFile is not None:
             ws = sess.run(tf.trainable_variables())
             writeWeightsWithNames(ws, tf.trainable_variables(), stackedDimList, trainedWeightFile)
@@ -473,5 +474,5 @@ targetBins = [-0.02, 0.02, 0.05]
 discretizeTargets(targets, targetBins)
 trainRnn(inputs, targets, None,
 #          trainedWeightFile='trained_weights.txt',
-         lr=0.01, epochs=10, rnnType='uni', task='perseq', stackedDimList=[25], cell='gru', miniBatchSize=4096, tokenSize=1, nclass=len(targetBins)+1)
+         lr=0.01, epochs=10, rnnType='uni', task='perseq', stackedDimList=[25], cell='gru', miniBatchSize=4096, tokenSize=1, nclass=len(targetBins)+1, seed=43215)
 
