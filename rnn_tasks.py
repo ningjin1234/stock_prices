@@ -478,5 +478,5 @@ targetBins = [-0.02, 0.02, 0.05]
 discretizeTargets(targets, targetBins)
 trainRnn(inputs, targets, None,
 #          trainedWeightFile='trained_weights.txt',
-         lr=0.01, epochs=1, rnnType='uni', task='perseq', stackedDimList=[25], cell='gru', miniBatchSize=4096, tokenSize=429, nclass=len(targetBins)+1, seed=43215)
+         lr=0.1, epochs=20, rnnType='uni', task='perseq', stackedDimList=[1024, 512], cell='gru', miniBatchSize=4096, tokenSize=429, nclass=len(targetBins)+1, seed=43215)
 
