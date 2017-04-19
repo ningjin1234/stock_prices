@@ -173,6 +173,23 @@ def genTextParms(docs, embeddingFile):
 def parseTextParms(inputTextParms):
     return inputTextParms['ids'], inputTextParms['lens'], inputTextParms['emb'], inputTextParms['maxl']
 
+def get_batch_feed_dict(inputTokens, inputLens, inputIds, lens, labels, targets, start, end, task, maxNumSteps):
+    if task.lower() in ['perseq']:
+        sub_targets = labels[start:end]
+    else:
+        sub_targets = labels[start*maxNumSteps:end*maxNumSteps]
+    return {inputTokens:inputIds[start:end], inputLens:lens[start:end], targets:sub_targets}
+
+def get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, labels, targets, task, maxNumSteps):
+    loss_val = 0.0
+    for j in range(nbatches):
+        start = miniBatchSize*j
+        end = miniBatchSize*(j+1) if (j < nbatches-1) else ndocs
+        feed_dict = get_batch_feed_dict(inputTokens, inputLens, inputIds, lens, labels, targets, start, end, task, maxNumSteps)
+        batch_loss_val = sess.run(loss, feed_dict=feed_dict)
+        loss_val += batch_loss_val
+    return loss_val/ndocs
+
 def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None, trainedWeightFile=None, lr=0.1, epochs=1,
              rnnType='normal', stackedDimList=[], task='perseq', cell='rnn', tokenSize=1, nclass=0, seed=None,
              inputTextParms=None):
@@ -223,6 +240,9 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
             writeWeightsWithNames(ws, tf.trainable_variables(), stackedDimList, initWeightFile)
         feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels}
         print('loss before training: %.14g' % (sess.run(loss, feed_dict=feed_dict)/ndocs))
+        full_loss = get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, 
+                                  labels, targets, task, maxNumSteps)
+        print('loss before training: %.7g' % full_loss)
         # print(sess.run(debugInfo, feed_dict=feed_dict))
         for i in range(epochs):
             for j in range(nbatches):
@@ -241,10 +261,13 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
                         subTargets = labels[start*maxNumSteps:end*maxNumSteps]
                 sess.run(learningRate.assign(lr/(end-start)))
                 feed_dict = {inputTokens:inputIds[start:end], inputLens:lens[start:end], targets:subTargets}
-                print('\tbefore batch %d: %.14g' % (j, sess.run(loss, feed_dict=feed_dict)/(end-start)))
+#                 print('\tbefore batch %d: %.14g' % (j, sess.run(loss, feed_dict=feed_dict)/(end-start)))
                 sess.run(learningStep, feed_dict=feed_dict)
             feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels}
             print('loss after %d epochs: %.14g' % (i+1, sess.run(loss, feed_dict=feed_dict)/ndocs))
+            full_loss = get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, 
+                                      labels, targets, task, maxNumSteps)
+            print('loss after %d epochs: %.7g' % (i+1, full_loss))
         if trainedWeightFile is not None:
             ws = sess.run(tf.trainable_variables())
             writeWeightsWithNames(ws, tf.trainable_variables(), stackedDimList, trainedWeightFile)
@@ -443,12 +466,12 @@ targets = [[-1,1,1,1,1,1], [1,-1,-1,-1,-1,-1], [1,1,-1,1,-1,1], [1,1,1,1,-1,-1],
 #              initWeightFile='tmp_outputs/binary_t5_%s_init_weights.txt'%cellType, trainedWeightFile='tmp_outputs/binary_t5_%s_trained_weights.txt'%cellType,
 #              lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 7], cell=cellType, miniBatchSize=11, tokenSize=5, nclass=2)
 # 
-inputs, targets = getNumDataFromFile('../data/debug.tsv', 5, 1, inputStartId=0)
+inputs, targets = getNumDataFromFile('../preprocessed/training.tsv', 5, 1, inputStartId=0)
 print(len(inputs))
 print(len(inputs[0]))
 targetBins = [-0.02, 0.02, 0.05]
 discretizeTargets(targets, targetBins)
 trainRnn(inputs, targets, None,
-         trainedWeightFile='trained_weights.txt',
-         lr=0.01, epochs=10, rnnType='uni', task='perseq', stackedDimList=[10], cell='gru', miniBatchSize=128, tokenSize=1, nclass=len(targetBins)+1)
+#          trainedWeightFile='trained_weights.txt',
+         lr=0.01, epochs=10, rnnType='uni', task='perseq', stackedDimList=[25], cell='gru', miniBatchSize=4096, tokenSize=1, nclass=len(targetBins)+1)
 
