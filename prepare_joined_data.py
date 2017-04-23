@@ -1,4 +1,5 @@
 import pandas as pd
+import argparse
 
 DELIMITER = '\t'
 
@@ -36,5 +37,16 @@ def prepare_joined_data(ifname, ofname, wsize=6, first_date=None, last_date=None
                 prev_row = cur_row
             fout.write(row_str + '\n')
 
-prepare_joined_data('joined_prices.txt', 'training.txt', last_date=pd.to_datetime('2016-01-01'))
-prepare_joined_data('joined_prices.txt', 'test.txt', first_date=pd.to_datetime('2016-01-01'))
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('ifname', help='path to input file', type=str)
+parser.add_argument('ofname', help='path to output file', type=str)
+parser.add_argument('--first', help='first target date in yyyy-mm-dd', type=str)
+parser.add_argument('--last', help='last target date in yyyy-mm-dd, inclusive', type=str)
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    first_date = pd.to_datetime(args.first) if args.first else None
+    last_date = pd.to_datetime(args.last) if args.last else None
+    prepare_joined_data(args.ifname, args.ofname, last_date=last_date, first_date=first_date)

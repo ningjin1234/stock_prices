@@ -1,4 +1,5 @@
 import pandas as pd
+import argparse
 import os
 
 def join_all_in_dir(dname, outname, cols=['Adj Close'], date_name='Date'):
@@ -25,4 +26,10 @@ def join_all_in_dir(dname, outname, cols=['Adj Close'], date_name='Date'):
     print('shape of joined dataframe: %s' % str(joined.shape))
     joined.to_csv(outname, index=False)
 
-join_all_in_dir('../daily_prices/', 'joined_prices.txt')
+parser = argparse.ArgumentParser()
+parser.add_argument('idir', help='path to input directory', type=str)
+parser.add_argument('ofname', help='path to output file', type=str)
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    join_all_in_dir(args.idir, args.ofname)
