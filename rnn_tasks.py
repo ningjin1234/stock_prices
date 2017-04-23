@@ -477,6 +477,11 @@ targets = [[-1,1,1,1,1,1], [1,-1,-1,-1,-1,-1], [1,1,-1,1,-1,1], [1,1,1,1,-1,-1],
 #              initWeightFile='tmp_outputs/binary_t5_%s_init_weights.txt'%cellType, trainedWeightFile='tmp_outputs/binary_t5_%s_trained_weights.txt'%cellType,
 #              lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 7], cell=cellType, miniBatchSize=11, tokenSize=5, nclass=2)
 # 
+
+# NOTES:
+# 1. learning rate is divided by batch size during training, so with large batch size, learning rate is very small
+# 2. gamma-0.5 is too aggressive and doesn't work well
+# 3. currently it does NOT support training multiple targets of one sequence
 token_size = 35
 step_num = 4
 targetStartName = 'Adj Close SP5004'
