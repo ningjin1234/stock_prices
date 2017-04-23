@@ -53,13 +53,16 @@ parser.add_argument('idir', help='path to input directory', type=str)
 parser.add_argument('ofname', help='path to output file', type=str)
 parser.add_argument('--first', help='first target date in yyyy-mm-dd', type=str)
 parser.add_argument('--last', help='last target date in yyyy-mm-dd, inclusive', type=str)
-
+parser.add_argument('--shuffle', help='whether to shuffle the records in output file; default is True', type=bool)
 
 if __name__ == '__main__':
     args = parser.parse_args()
     first_date = pd.to_datetime(args.first) if args.first else None
     last_date = pd.to_datetime(args.last) if args.last else None
     prepare_all_in_dir(args.idir, args.ofname, first_date=first_date, last_date=last_date, debug_info=False)
-
+    doShuffle = args.shuffle if args.shuffle else True
+    if doShuffle:
+        print('shuffling records in output file...')
+        os.system('python shuffle_file.py %s %s' % (args.ofname, args.ofname))
 
 
