@@ -58,7 +58,7 @@ if __name__ == "__main__":
     symbols = set() 
     with open(args.sfile, 'r') as fin:
         for line in fin.readlines():
-            symbols |= set(line.split(' '))
+            symbols |= set(line.strip().split(' '))
     symbols -= set(['', '\n'])
     start_date = pd.to_datetime(args.sdate) if args.sdate else None
     get_data_for_symbols(symbols, path=args.opath, start_date=start_date)
