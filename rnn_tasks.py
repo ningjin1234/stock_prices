@@ -480,10 +480,10 @@ targets = [[-1,1,1,1,1,1], [1,-1,-1,-1,-1,-1], [1,1,-1,1,-1,1], [1,1,1,1,-1,-1],
 token_size = 35
 step_num = 4
 targetStartName = 'Adj Close SP5004'
-gamma = 0.5
+gamma = 0.9
 step_size = 20
-learning_rate = 0.1
-mini_batch = 1024
+mini_batch = 128
+learning_rate = 0.5 
 epochs = 200
 inputs, targets = getNumDataFromFile('index_training.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
 print(len(inputs))
@@ -492,7 +492,7 @@ targetBins = [-0.01, 0.01]
 discretizeTargets(targets, targetBins)
 trainRnn(inputs, targets, None,
 #          trainedWeightFile='trained_weights.txt',
-         lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024, 512], cell='gru', miniBatchSize=mini_batch, tokenSize=token_size, nclass=len(targetBins)+1, seed=43215, gamma=gamma, step_size=step_size)
+         lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024], cell='gru', miniBatchSize=mini_batch, tokenSize=token_size, nclass=len(targetBins)+1, seed=43215, gamma=gamma, step_size=step_size)
 
 
 
