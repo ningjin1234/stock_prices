@@ -19,4 +19,5 @@ parser.add_argument('--hasHeader', help='whether input file has header', type=bo
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    shuffle_file(args.ifname, args.ofname, hasHeader=args.hasHeader)
+    hasHeader = args.hasHeader if args.hasHeader else True
+    shuffle_file(args.ifname, args.ofname, hasHeader=hasHeader)
