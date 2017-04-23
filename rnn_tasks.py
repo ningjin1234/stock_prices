@@ -140,7 +140,8 @@ def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
             loss = tf.reduce_sum(losses/maxNumSteps)
     lr = tf.Variable(learningRate, trainable=False)
     tvars = tf.trainable_variables()
-    optimizer = tf.train.GradientDescentOptimizer(lr)
+#     optimizer = tf.train.GradientDescentOptimizer(lr)
+    optimizer = tf.train.AdamOptimizer(lr)
     gradients = optimizer.compute_gradients(loss, var_list=tvars) # for debugging purpose
     learningStep = optimizer.minimize(loss, var_list=tvars)
     initAll = tf.global_variables_initializer()
@@ -193,7 +194,7 @@ def get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, input
 
 def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None, trainedWeightFile=None, lr=0.1, epochs=1,
              rnnType='normal', stackedDimList=[], task='perseq', cell='rnn', tokenSize=1, nclass=0, seed=None,
-             inputTextParms=None):
+             inputTextParms=None, gamma=0.5, step_size=50):
     assert len(docs) == len(labels)
     maxNumSteps = 0
     ndocs = len(docs)
@@ -246,6 +247,8 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
         print('loss before training: %.7g\t%s' % (full_loss, str(dt.now())))
         # print(sess.run(debugInfo, feed_dict=feed_dict))
         for i in range(epochs):
+            if i % step_size == 0 and i != 0:
+                lr *= gamma
             for j in range(nbatches):
                 start = miniBatchSize*j
                 if j < nbatches - 1:
@@ -268,7 +271,7 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
 #             print('loss after %d epochs: %.14g' % (i+1, sess.run(loss, feed_dict=feed_dict)/ndocs))
             full_loss = get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, 
                                       labels, targets, task, maxNumSteps)
-            print('loss after %d epochs: %.7g\t%s' % (i+1, full_loss, str(dt.now())))
+            print('loss after %d epochs: %.7g\tlearning rate: %.7g\t%s' % (i+1, full_loss, sess.run(learningRate), str(dt.now())))
         if trainedWeightFile is not None:
             ws = sess.run(tf.trainable_variables())
             writeWeightsWithNames(ws, tf.trainable_variables(), stackedDimList, trainedWeightFile)
@@ -285,24 +288,27 @@ def getTextDataFromFile(fname, key='key', text='text', target='target', delimite
         labels.append([t])
     return tokenized, labels
 
-def getNumDataFromFile(fname, inputLen, targetLen, delimiter='\t', inputStartId=1):
+def getNumDataFromFile(fname, inputLen, targetStartName, targetLen, delimiter='\t', inputStartId=1):
     inputs = []
     targets = []
     line_num = 0
     with open(fname, 'r') as fin:
-        header = fin.readline()
+        header = fin.readline().strip()
+        header_dict = dict()
+        for i,col in enumerate(header.split(delimiter)):
+            header_dict[col] = i
+        targetStartId = header_dict[targetStartName]
         for line in fin:
             line_num += 1
             splitted = line.strip().split(delimiter)
             invec = []
             outvec = []
-            splitted = splitted[inputStartId:]
             if len(splitted) < inputLen+targetLen:
-                print(line_num)
+                print(line_num, len(splitted), inputLen+targetLen)
             assert (len(splitted) >= inputLen+targetLen)
-            for v in splitted[:inputLen]:
+            for v in splitted[inputStartId:inputStartId+inputLen]:
                 invec.append(float(v))
-            for v in splitted[inputLen:inputLen+targetLen]:
+            for v in splitted[targetStartId:targetStartId+targetLen]:
                 outvec.append(float(v))
             inputs.append(invec)
             targets.append(outvec)
@@ -471,12 +477,22 @@ targets = [[-1,1,1,1,1,1], [1,-1,-1,-1,-1,-1], [1,1,-1,1,-1,1], [1,1,1,1,-1,-1],
 #              initWeightFile='tmp_outputs/binary_t5_%s_init_weights.txt'%cellType, trainedWeightFile='tmp_outputs/binary_t5_%s_trained_weights.txt'%cellType,
 #              lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 7], cell=cellType, miniBatchSize=11, tokenSize=5, nclass=2)
 # 
-inputs, targets = getNumDataFromFile('training.txt', 1716, 429, inputStartId=1)
+token_size = 35
+step_num = 4
+targetStartName = 'Adj Close SP5004'
+gamma = 0.5
+step_size = 20
+learning_rate = 0.1
+mini_batch = 1024
+epochs = 200
+inputs, targets = getNumDataFromFile('index_training.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
 print(len(inputs))
 print(len(inputs[0]))
-targetBins = [-0.02, 0.02, 0.05]
+targetBins = [-0.01, 0.01]
 discretizeTargets(targets, targetBins)
 trainRnn(inputs, targets, None,
 #          trainedWeightFile='trained_weights.txt',
-         lr=0.1, epochs=20, rnnType='uni', task='perseq', stackedDimList=[1024, 512], cell='gru', miniBatchSize=4096, tokenSize=429, nclass=len(targetBins)+1, seed=43215)
+         lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024, 512], cell='gru', miniBatchSize=mini_batch, tokenSize=token_size, nclass=len(targetBins)+1, seed=43215, gamma=gamma, step_size=step_size)
+
+
 
