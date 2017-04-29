@@ -243,6 +243,7 @@ def scoreRnn(ckpt, docs, labels=None, inputTextParms=None, miniBatchSize=-1, emb
         targets = tf.get_collection('feed_dict')[2]
         feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels}
         print(sess.run(prediction, feed_dict=feed_dict))
+        print(sess.run(loss, feed_dict=feed_dict)/ndocs)
 
 def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None, trainedWeightFile=None, lr=0.1, epochs=1,
              rnnType='normal', stackedDimList=[], task='perseq', cell='rnn', tokenSize=1, nclass=0, seed=None,
@@ -392,173 +393,30 @@ def discretizeTargets(targets, bins):
             if not discretized:
                 arr[i] = len(bins)
 
-doc1 = "apple is a company".split()
-doc2 = "google is another big company".split()
-doc3 = "orange is a fruit".split()
-doc4 = "apple google apple google apple google apple google".split()
-doc5 = "blue is a color".split()
-doc6 = "blue orange color apple google company".split()
-doc7 = "google is company".split()
-docs = [doc1, doc2, doc3, doc4, doc5, doc6]
-# doc1 = "apple".split()
-# docs = [doc1]
-# docs = [doc1, doc7]
-# docs = [reversed(doc1), reversed(doc2), reversed(doc3), reversed(doc4), reversed(doc5)]
-# docs = [['apple','is'], ['google','is'],['orange','is']]
-# docs = [['apple'], ['google'],['orange'],['company'],['fruit']]
-# docs = [['apple', 'is', 'a'], ['google', 'is']]
-# labels = [[0.6], [0.7], [0.8]]
-labels = [[0.6], [0.7], [0.8], [0.01], [0.6], [0.2]]
-# labels = [[0.6], [0.7], [0.8], [0.01], [0.6]]
-# labels = [[0.6]]
-# labels = [[0.6], [0.7]]
-# docs = [['apple', 'is', 'a', 'company']]
-# labels = [[0.6]]
-# docs = [['google', 'is', 'company']]
-# labels = [[0.7]]
-# docs = [['apple','google','apple','google','apple','google','apple','google']]
-# labels = [[0.01]]
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/rnn_init_weights.txt', trainedWeightFile='tmp_outputs/rnn_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='normal', miniBatchSize=6)
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/reverse_rnn_init_weights.txt', trainedWeightFile='tmp_outputs/reverse_rnn_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='reverse')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/stacked_rnn_init_weights.txt', trainedWeightFile='tmp_outputs/stacked_rnn_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='normal', stackedDimList=[6, 5, 7])
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/bi_rnn_init_weights.txt', trainedWeightFile='tmp_outputs/bi_rnn_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 7])
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/bi0_rnn_init_weights.txt', trainedWeightFile='tmp_outputs/bi0_rnn_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 0])
-
-inputs = [[-1,2,3,4,5,6], [6,5,4,3,2,1], [5,9,3,7,1,2], [1,2,3,4,2,1], [-2,3,4,7,5,6], [6,5,1,3,2,1]]
-targets = [[-1,1,1,1,1,1], [1,-1,-1,-1,-1,-1], [1,1,-1,1,-1,1], [1,1,1,1,-1,-1], [-1,1,1,1,-1,1], [-1,-1,-1,1,-1,-1]]
-# trainRnn(inputs, targets, 6, None,
-#          initWeightFile='tmp_outputs/slbi_rnn_init_weights.txt', trainedWeightFile='tmp_outputs/slbi_rnn_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', task='perstep', stackedDimList=[6, 5, 7])
-# trainRnn(inputs, targets, 6, None,
-#          initWeightFile='tmp_outputs/slbi0_rnn_init_weights.txt', trainedWeightFile='tmp_outputs/slbi0_rnn_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', task='perstep', stackedDimList=[6, 5, 0])
-
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/gru_init_weights.txt', trainedWeightFile='tmp_outputs/gru_trained_weights.txt',
-#          lr=0.3, epochs=1, rnnType='normal', cell='gru')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/reverse_gru_init_weights.txt', trainedWeightFile='tmp_outputs/reverse_gru_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='reverse', cell='gru')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/stacked_gru_init_weights.txt', trainedWeightFile='tmp_outputs/stacked_gru_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='normal', stackedDimList=[6, 5, 7], cell='gru')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/bi_gru_init_weights.txt', trainedWeightFile='tmp_outputs/bi_gru_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 7], cell='gru')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/bi0_gru_init_weights.txt', trainedWeightFile='tmp_outputs/bi0_gru_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 0], cell='gru')
-# trainRnn(inputs, targets, 6, None,
-#          initWeightFile='tmp_outputs/sl_gru_init_weights.txt', trainedWeightFile='tmp_outputs/sl_gru_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='normal', task='perstep', cell='gru')
-# trainRnn(inputs, targets, 6, None,
-#          initWeightFile='tmp_outputs/slbi_gru_init_weights.txt', trainedWeightFile='tmp_outputs/slbi_gru_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', task='perstep', stackedDimList=[6, 5, 7], cell='gru')
-# trainRnn(inputs, targets, 6, None,
-#          initWeightFile='tmp_outputs/slbi0_gru_init_weights.txt', trainedWeightFile='tmp_outputs/slbi0_gru_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', task='perstep', stackedDimList=[6, 5, 0], cell='gru')
-
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/lstm_init_weights.txt', trainedWeightFile='tmp_outputs/lstm_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='normal', cell='lstm')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/reverse_lstm_init_weights.txt', trainedWeightFile='tmp_outputs/reverse_lstm_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='reverse', cell='lstm')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/stacked_lstm_init_weights.txt', trainedWeightFile='tmp_outputs/stacked_lstm_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='normal', stackedDimList=[6, 5, 7], cell='lstm')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/bi_lstm_init_weights.txt', trainedWeightFile='tmp_outputs/bi_lstm_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 7], cell='lstm')
-# trainRnn(docs, labels, 4, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/bi0_lstm_init_weights.txt', trainedWeightFile='tmp_outputs/bi0_lstm_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 0], cell='lstm')
-# trainRnn(inputs, targets, 6, None,
-#          initWeightFile='tmp_outputs/sl_lstm_init_weights.txt', trainedWeightFile='tmp_outputs/sl_lstm_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='normal', task='perstep', cell='lstm')
-# trainRnn(inputs, targets, 6, None,
-#          initWeightFile='tmp_outputs/slbi_lstm_init_weights.txt', trainedWeightFile='tmp_outputs/slbi_lstm_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', task='perstep', stackedDimList=[6, 5, 7], cell='lstm')
-# trainRnn(inputs, targets, 6, None,
-#          initWeightFile='tmp_outputs/slbi0_lstm_init_weights.txt', trainedWeightFile='tmp_outputs/slbi0_lstm_trained_weights.txt',
-#          lr=0.3, epochs=10, rnnType='bi', task='perstep', stackedDimList=[6, 5, 0], cell='lstm')
-
-# docs, labels = getTextDataFromFile('data/rand_docs.txt')
-# trainRnn(docs, labels, 7, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/large_rnn_init_weights.txt', trainedWeightFile='tmp_outputs/large_rnn_trained_weights.txt',
-#          lr=0.3, epochs=1, rnnType='bi', stackedDimList=[16, 10, 7], miniBatchSize=99)
-# trainRnn(docs, labels, 7, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/large_gru_init_weights.txt', trainedWeightFile='tmp_outputs/large_gru_trained_weights.txt',
-#          lr=0.3, epochs=1, rnnType='bi', stackedDimList=[16, 10, 7], cell='gru', miniBatchSize=99)
-# trainRnn(docs, labels, 7, 'data/toy_embeddings.txt',
-#          initWeightFile='tmp_outputs/large_lstm_init_weights.txt', trainedWeightFile='tmp_outputs/large_lstm_trained_weights.txt',
-#          lr=0.3, epochs=1, rnnType='bi', stackedDimList=[16, 10, 7], cell='lstm', miniBatchSize=99)
-
-# inputs, targets = getNumDataFromFile('data/rand_num.txt', 53, 53)
-# for cellType in ['rnn', 'gru', 'lstm']:
-#     trainRnn(inputs, targets, 23, None,
-#              initWeightFile='tmp_outputs/sllarge_%s_init_weights.txt'%cellType, trainedWeightFile='tmp_outputs/sllarge_%s_trained_weights.txt'%cellType,
-#              lr=0.3, epochs=10, rnnType='bi', task='perstep', stackedDimList=[6, 5, 7], cell=cellType, miniBatchSize=11)
-
-# inputs, targets = getNumDataFromFile('data/rand_num_t7_l23.txt', 23*5, 23)
-# print(len(inputs))
-# print(len(inputs[0]))
-# for cellType in ['rnn', 'gru', 'lstm']:
-#     trainRnn(inputs, targets, 23, None,
-#              initWeightFile='tmp_outputs/sllarge_t5_%s_init_weights.txt'%cellType, trainedWeightFile='tmp_outputs/sllarge_t5_%s_trained_weights.txt'%cellType,
-#              lr=0.3, epochs=5, rnnType='bi', task='perstep', stackedDimList=[6, 5, 7], cell=cellType, miniBatchSize=11, tokenSize=5)
-
-# inputs, targets = getNumDataFromFile('data/rand_num_t7_l23.txt', 23*5, 1)
-# print(len(inputs))
-# print(len(inputs[0]))
-# for cellType in ['rnn', 'gru', 'lstm']:
-#     trainRnn(inputs, targets, 23, None,
-#              initWeightFile='tmp_outputs/large_t5_%s_init_weights.txt'%cellType, trainedWeightFile='tmp_outputs/large_t5_%s_trained_weights.txt'%cellType,
-#              lr=0.3, epochs=5, rnnType='bi', stackedDimList=[6, 5, 7], cell=cellType, miniBatchSize=11, tokenSize=5)
-
-# inputs, targets = getNumDataFromFile('data/rand_num_t7_l23_binary.txt', 23*5, 1)
-# print(len(inputs))
-# print(len(inputs[0]))
-# targetMap = {0:1, 1:0}
-# mapTargets(targets, targetMap)
-# for cellType in ['rnn', 'gru', 'lstm']:
-#     trainRnn(inputs, targets, 23, None,
-#              initWeightFile='tmp_outputs/binary_t5_%s_init_weights.txt'%cellType, trainedWeightFile='tmp_outputs/binary_t5_%s_trained_weights.txt'%cellType,
-#              lr=0.3, epochs=10, rnnType='bi', stackedDimList=[6, 5, 7], cell=cellType, miniBatchSize=11, tokenSize=5, nclass=2)
-# 
-
-# NOTES:
-# 1. learning rate is divided by batch size during training, so with large batch size, learning rate is very small
-# 2. gamma-0.5 is too aggressive and doesn't work well
-# 3. currently it does NOT support training multiple targets of one sequence
-token_size = 35
-step_num = 4
-targetStartName = 'Adj Close SP5004'
-gamma = 0.9
-step_size = 20
-mini_batch = 128
-learning_rate = 0.5 
-# epochs = 200
-epochs = 1
-inputs, targets = getNumDataFromFile('index_training.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
-print(len(inputs))
-print(len(inputs[0]))
-targetBins = [-0.01, 0.01]
-discretizeTargets(targets, targetBins)
-# trainRnn(inputs, targets, None,
-#          lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024], cell='gru', 
-#          miniBatchSize=mini_batch, tokenSize=token_size, nclass=len(targetBins)+1, seed=43215, gamma=gamma, 
-#          step_size=step_size, ckpt='./model.ckpt')
-scoreRnn('./model.ckpt', inputs, labels=targets)
-
+if __name__ == '__main__':
+    # NOTES:
+    # 1. learning rate is divided by batch size during training, so with large batch size, learning rate is very small
+    # 2. gamma-0.5 is too aggressive and doesn't work well
+    # 3. currently it does NOT support training multiple targets of one sequence
+    token_size = 35
+    step_num = 4
+    targetStartName = 'Adj Close SP5004'
+    gamma = 0.9
+    step_size = 20
+    mini_batch = 128
+    learning_rate = 0.5 
+    epochs = 100
+#     epochs = 1
+#     inputs, targets = getNumDataFromFile('index_training.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
+    inputs, targets = getNumDataFromFile('index_test.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
+    print(len(inputs))
+    print(len(inputs[0]))
+    targetBins = [-0.01, 0.01]
+    discretizeTargets(targets, targetBins)
+#     trainRnn(inputs, targets, None,
+#              lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024], cell='gru', 
+#              miniBatchSize=mini_batch, tokenSize=token_size, nclass=len(targetBins)+1, seed=43215, gamma=gamma, 
+#              step_size=step_size, ckpt='./model.ckpt')
+    scoreRnn('./model.ckpt', inputs, labels=targets)
+    
 
