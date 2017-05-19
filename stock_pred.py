@@ -27,7 +27,7 @@ parser.add_argument('--startId', help='index of the first input column, default 
 parser.add_argument('--learningRate', help='initial learning rate before being divided by mini-batch size', default=0.5, type=float)
 parser.add_argument('--batchSize', help='number of obs in a mini-batch', default=128, type=int)
 parser.add_argument('--epochs', help='number of iterations for training', default=10, type=int)
-parser.add_argument('--stepSize', help='number of steps before multiplying learning rate by gamma', default=10, type=int)
+parser.add_argument('--stepSize', help='number of steps before multiplying learning rate by gamma', default=20, type=int)
 parser.add_argument('--gamma', help='gamma for adjusting learning rate', default=0.9, type=float)
 parser.add_argument('--modelPath', help='path to model files', default='./model.ckpt', type=str)
 
@@ -51,13 +51,14 @@ if __name__ == '__main__':
     print('token size: %d\t number of steps: %d' % (token_size, num_steps))
     inputs, targets = getNumDataFromFile(fname, token_size*num_steps, target_start, 1, inputStartId=start_id)
     targetBins = [-0.01, 0, 0.01]
-    discretizeTargets(targets, targetBins)
+    tgtCnt = discretizeTargets(targets, targetBins)
+    weights = getObsWgtFromTgtCnt(targets, tgtCnt)
     if task.lower() == 'train':
         trainRnn(inputs, targets, None,
-                 lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=['1024'], cell='gru',
+                 lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024], cell='gru',
                  miniBatchSize=batch_size, tokenSize=token_size, nclass=len(targetBins)+1, seed=32145, gamma=gamma,
-                 step_size=step_size, ckpt=model_path)
+                 step_size=step_size, ckpt=model_path, obsWeights=weights)
     elif task.lower() == 'score':
-        scoreRnn(model_path, inputs, labels=targets)
+        scoreRnn(model_path, inputs, labels=targets, obsWeights=weights)
     else:
         print('unrecognized task type: %s' % task)

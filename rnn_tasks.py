@@ -78,6 +78,7 @@ def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
         tf.set_random_seed(seed)
     inputTokens = tf.placeholder(tf.int32, [None, maxNumSteps])
     inputLens = tf.placeholder(tf.int32, [None])
+    obsWgts = tf.placeholder(tf.float32, [None])
     if task.lower() in ['perseq']:
         if nclass <= 1:
             targets = tf.placeholder(tf.float32, [None, 1])
@@ -102,6 +103,7 @@ def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
     tf.add_to_collection('feed_dict', inputTokens)
     tf.add_to_collection('feed_dict', inputLens)
     tf.add_to_collection('feed_dict', targets)
+    tf.add_to_collection('feed_dict', obsWgts)
     cellTypes = scaleToList(cell, len(stackedDimList))
     acts = scaleToList(act, len(stackedDimList))
     rnnTypes = scaleToList(rnnType, len(stackedDimList)) 
@@ -130,22 +132,22 @@ def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
     tf.add_to_collection('prediction', prediction)
     if task.lower() in ['perseq']:
         if nclass <= 1:
-            loss = tf.reduce_sum(tf.pow(prediction-targets, 2)/2)
+            loss = tf.reduce_sum(tf.multiply(obsWgts, tf.pow(prediction-targets, 2))/2)
         else:
             logits = tf.reshape(prediction, [-1, nclass])
             softmax = tf.nn.softmax(logits) # for debugging purpose
             tf.add_to_collection('prediction', softmax)
             losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, targets)
-            loss = tf.reduce_sum(losses)
+            loss = tf.reduce_sum(tf.multiply(obsWgts, losses))
     elif task.lower() in ['pertoken', 'perstep']:
         if nclass <= 1:
-            loss = tf.reduce_sum(tf.pow(prediction-targets, 2)/2/maxNumSteps)
+            loss = tf.reduce_sum(tf.multiply(obsWgts, tf.pow(prediction-targets, 2)/2/maxNumSteps))
         else:
             logits = tf.reshape(prediction, [-1, nclass])
             softmax = tf.nn.softmax(logits) # for debugging purpose
             tf.add_to_collection('prediction', softmax)
             losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, targets)
-            loss = tf.reduce_sum(losses/maxNumSteps)
+            loss = tf.reduce_sum(tf.multiply(obsWgts, losses/maxNumSteps))
     tf.add_to_collection('loss', loss)
     lr = tf.Variable(learningRate, trainable=False)
     tvars = tf.trainable_variables()
@@ -155,7 +157,7 @@ def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
     learningStep = optimizer.minimize(loss, var_list=tvars)
     initAll = tf.global_variables_initializer()
     # last return is output to screen for debugging purpose
-    return inputTokens, inputLens, targets, prediction, loss, initAll, learningStep, gradients, lr, flattened_outputs
+    return inputTokens, inputLens, targets, prediction, loss, initAll, learningStep, gradients, lr, obsWgts
 
 def genTextParms(docs, embeddingFile):
     textParms = {}
@@ -184,24 +186,24 @@ def genTextParms(docs, embeddingFile):
 def parseTextParms(inputTextParms):
     return inputTextParms['ids'], inputTextParms['lens'], inputTextParms['emb'], inputTextParms['maxl']
 
-def get_batch_feed_dict(inputTokens, inputLens, inputIds, lens, labels, targets, start, end, task, maxNumSteps):
+def get_batch_feed_dict(inputTokens, inputLens, inputIds, lens, labels, targets, start, end, task, maxNumSteps, obsWgts, obsWeights):
     if task.lower() in ['perseq']:
         sub_targets = labels[start:end]
     else:
         sub_targets = labels[start*maxNumSteps:end*maxNumSteps]
-    return {inputTokens:inputIds[start:end], inputLens:lens[start:end], targets:sub_targets}
+    return {inputTokens:inputIds[start:end], inputLens:lens[start:end], targets:sub_targets, obsWgts:obsWeights[start:end]}
 
-def get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, labels, targets, task, maxNumSteps):
+def get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, labels, targets, task, maxNumSteps, obsWgts, obsWeights):
     loss_val = 0.0
     for j in range(nbatches):
         start = miniBatchSize*j
         end = miniBatchSize*(j+1) if (j < nbatches-1) else ndocs
-        feed_dict = get_batch_feed_dict(inputTokens, inputLens, inputIds, lens, labels, targets, start, end, task, maxNumSteps)
+        feed_dict = get_batch_feed_dict(inputTokens, inputLens, inputIds, lens, labels, targets, start, end, task, maxNumSteps, obsWgts, obsWeights) 
         batch_loss_val = sess.run(loss, feed_dict=feed_dict)
         loss_val += batch_loss_val
     return loss_val/ndocs
 
-def scoreRnn(ckpt, docs, labels=None, inputTextParms=None, miniBatchSize=-1, embeddingFile=None):
+def scoreRnn(ckpt, docs, labels=None, inputTextParms=None, miniBatchSize=-1, embeddingFile=None, obsWeights=None):
     maxNumSteps = 0
     ndocs = len(docs)
     if miniBatchSize < 0:
@@ -236,18 +238,21 @@ def scoreRnn(ckpt, docs, labels=None, inputTextParms=None, miniBatchSize=-1, emb
             if nclass>1:
                 labels = np.asarray(labels, dtype=np.int32)
                 labels = np.reshape(labels, (-1))
+        if obsWeights is None:
+            obsWeights = np.ones(lens.shape)
         prediction = tf.get_collection('prediction')[0] if nclass <= 1 else tf.get_collection('prediction')[1]
         loss = tf.get_collection('loss')[0]
         inputTokens = tf.get_collection('feed_dict')[0]
         inputLens = tf.get_collection('feed_dict')[1]
         targets = tf.get_collection('feed_dict')[2]
-        feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels}
+        obsWgts = tf.get_collection('feed_dict')[3]
+        feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels, obsWgts:obsWeights}
         print(sess.run(prediction, feed_dict=feed_dict))
         print(sess.run(loss, feed_dict=feed_dict)/ndocs)
 
 def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None, trainedWeightFile=None, lr=0.1, epochs=1,
              rnnType='normal', stackedDimList=[], task='perseq', cell='rnn', tokenSize=1, nclass=0, seed=None,
-             inputTextParms=None, gamma=0.5, step_size=50, ckpt=None):
+             inputTextParms=None, gamma=0.5, step_size=50, ckpt=None, obsWeights=None):
     assert len(docs) == len(labels)
     maxNumSteps = 0
     ndocs = len(docs)
@@ -274,7 +279,9 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
         if nclass>1:
             labels = np.asarray(labels, dtype=np.int32)
             labels = np.reshape(labels, (-1))
-    inputTokens, inputLens, targets, prediction, loss, initAll, learningStep, gradients, learningRate, debugInfo = getRnnTrainOps(maxNumSteps=maxNumSteps,
+    if obsWeights is None:
+        obsWeights = np.ones(lens.shape)
+    inputTokens, inputLens, targets, prediction, loss, initAll, learningStep, gradients, learningRate, obsWgts = getRnnTrainOps(maxNumSteps=maxNumSteps,
                                                                                                    seed=seed, initEmbeddings=embeddingArray,
                                                                                                    learningRate=lr/miniBatchSize, rnnType=rnnType,
                                                                                                    stackedDimList=stackedDimList, task=task,
@@ -297,10 +304,10 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
         if initWeightFile is not None:
             ws = sess.run(tf.trainable_variables())
             writeWeightsWithNames(ws, tf.trainable_variables(), stackedDimList, initWeightFile)
-        feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels}
+        feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels, obsWgts:obsWeights}
 #         print('loss before training: %.14g' % (sess.run(loss, feed_dict=feed_dict)/ndocs))
         full_loss = get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, 
-                                  labels, targets, task, maxNumSteps)
+                                  labels, targets, task, maxNumSteps, obsWgts, obsWeights)
         print('loss before training: %.7g\t%s' % (full_loss, str(dt.now())))
         # print(sess.run(debugInfo, feed_dict=feed_dict))
         for i in range(epochs):
@@ -321,13 +328,13 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
                     else:
                         subTargets = labels[start*maxNumSteps:end*maxNumSteps]
                 sess.run(learningRate.assign(lr/(end-start)))
-                feed_dict = {inputTokens:inputIds[start:end], inputLens:lens[start:end], targets:subTargets}
+                feed_dict = {inputTokens:inputIds[start:end], inputLens:lens[start:end], targets:subTargets, obsWgts:obsWeights[start:end]}
 #                 print('\tbefore batch %d: %.14g' % (j, sess.run(loss, feed_dict=feed_dict)/(end-start)))
                 sess.run(learningStep, feed_dict=feed_dict)
-            feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels}
+            feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels, obsWgts:obsWeights}
 #             print('loss after %d epochs: %.14g' % (i+1, sess.run(loss, feed_dict=feed_dict)/ndocs))
             full_loss = get_full_loss(sess, loss, ndocs, nbatches, miniBatchSize, inputTokens, inputLens, inputIds, lens, 
-                                      labels, targets, task, maxNumSteps)
+                                      labels, targets, task, maxNumSteps, obsWgts, obsWeights)
             print('loss after %d epochs: %.7g\tlearning rate: %.7g\t%s' % (i+1, full_loss, sess.run(learningRate), str(dt.now())))
         if ckpt is not None:    
             save_path = saver.save(sess, ckpt)
@@ -382,6 +389,7 @@ def mapTargets(targets, targetMap):
             arr[i] = targetMap[arr[i]]
 
 def discretizeTargets(targets, bins):
+    tgtCnt = [0 for _ in range(len(bins)+1)]
     for arr in targets:
         for i in range(len(arr)):
             discretized = False
@@ -392,6 +400,17 @@ def discretizeTargets(targets, bins):
                     break
             if not discretized:
                 arr[i] = len(bins)
+            tgtCnt[arr[i]] += 1
+    return tgtCnt
+
+# assumes each obs has only one target value
+def getObsWgtFromTgtCnt(targets, tgtCnt):
+    suma = np.sum(tgtCnt)
+    freq = [tgtCnt[i]/suma for i in range(len(tgtCnt))]
+    res = []
+    for arr in targets:
+        res.append(1.0/freq[arr[0]])
+    return res
 
 if __name__ == '__main__':
     # NOTES:
@@ -405,18 +424,19 @@ if __name__ == '__main__':
     step_size = 20
     mini_batch = 128
     learning_rate = 0.5 
-    epochs = 100
+    epochs = 1
 #     epochs = 1
-#     inputs, targets = getNumDataFromFile('index_training.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
-    inputs, targets = getNumDataFromFile('index_test.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
-    print(len(inputs))
-    print(len(inputs[0]))
+    inputs, targets = getNumDataFromFile('index_training.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
+#     inputs, targets = getNumDataFromFile('index_test.txt', token_size*step_num, targetStartName, 1, inputStartId=1)
+    print('number of obs: %d' % len(inputs))
+    print('number of features per obs: %d' % len(inputs[0]))
     targetBins = [-0.01, 0.01]
-    discretizeTargets(targets, targetBins)
-#     trainRnn(inputs, targets, None,
-#              lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024], cell='gru', 
-#              miniBatchSize=mini_batch, tokenSize=token_size, nclass=len(targetBins)+1, seed=43215, gamma=gamma, 
-#              step_size=step_size, ckpt='./model.ckpt')
-    scoreRnn('./model.ckpt', inputs, labels=targets)
+    tgtCnt = discretizeTargets(targets, targetBins)
+    weights = getObsWgtFromTgtCnt(targets, tgtCnt)
+    trainRnn(inputs, targets, None,
+             lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024], cell='gru', 
+             miniBatchSize=mini_batch, tokenSize=token_size, nclass=len(targetBins)+1, seed=43215, gamma=gamma, 
+             step_size=step_size, ckpt='./model.ckpt', obsWeights=weights)
+#     scoreRnn('./model.ckpt', inputs, labels=targets)
     
 
