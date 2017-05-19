@@ -250,8 +250,16 @@ def scoreRnn(ckpt, docs, labels=None, inputTextParms=None, miniBatchSize=-1, emb
         targets = tf.get_collection('feed_dict')[2]
         obsWgts = tf.get_collection('feed_dict')[3]
         feed_dict = {inputTokens:inputIds, inputLens:lens, targets:labels, obsWgts:obsWeights}
-        print(sess.run(prediction, feed_dict=feed_dict))
-        print(sess.run(loss, feed_dict=feed_dict)/ndocs)
+        pred_vals = sess.run(prediction, feed_dict=feed_dict)
+        print(pred_vals)
+        print("loss error: %f" % (sess.run(loss, feed_dict=feed_dict)/ndocs))
+        if labels is not None:
+            miss = 0
+            for i in range(len(labels)):
+                pred_label = np.argmax(pred_vals[i])
+                if pred_label != labels[i]:
+                    miss += 1
+            print("misclassification error: %f" % (float(miss)/float(len(labels))))
 
 def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None, trainedWeightFile=None, lr=0.1, epochs=1,
              rnnType='normal', stackedDimList=[], task='perseq', cell='rnn', tokenSize=1, nclass=0, seed=None,
