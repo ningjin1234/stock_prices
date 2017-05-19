@@ -72,7 +72,7 @@ def getRnnLayers(stackedDimList, inputData, inputLens, cellTypes='rnn', acts=tf.
 
 def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
                         bias_trainable=True, learningRate=0.1, rnnType='normal', stackedDimList=[],
-                        act=tf.tanh, task='perseq', cell='rnn', nclass=0, seed=None):
+                        act=tf.tanh, task='perseq', cell='rnn', nclass=0, seed=None, l2=0.0):
     tf.reset_default_graph()
     if seed is not None:
         tf.set_random_seed(seed)
@@ -151,12 +151,15 @@ def getRnnTrainOps(maxNumSteps=10, initEmbeddings=None, tokenSize=1,
     tf.add_to_collection('loss', loss)
     lr = tf.Variable(learningRate, trainable=False)
     tvars = tf.trainable_variables()
+    rloss = loss
+    if l2 > 0:
+        for v in tvars:
+            rloss += l2 * tf.nn.l2_loss(v)
 #     optimizer = tf.train.GradientDescentOptimizer(lr)
     optimizer = tf.train.AdamOptimizer(lr)
-    gradients = optimizer.compute_gradients(loss, var_list=tvars) # for debugging purpose
-    learningStep = optimizer.minimize(loss, var_list=tvars)
+    gradients = optimizer.compute_gradients(rloss, var_list=tvars) # for debugging purpose
+    learningStep = optimizer.minimize(rloss, var_list=tvars)
     initAll = tf.global_variables_initializer()
-    # last return is output to screen for debugging purpose
     return inputTokens, inputLens, targets, prediction, loss, initAll, learningStep, gradients, lr, obsWgts
 
 def genTextParms(docs, embeddingFile):
@@ -252,7 +255,7 @@ def scoreRnn(ckpt, docs, labels=None, inputTextParms=None, miniBatchSize=-1, emb
 
 def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None, trainedWeightFile=None, lr=0.1, epochs=1,
              rnnType='normal', stackedDimList=[], task='perseq', cell='rnn', tokenSize=1, nclass=0, seed=None,
-             inputTextParms=None, gamma=0.5, step_size=50, ckpt=None, obsWeights=None):
+             inputTextParms=None, gamma=0.5, step_size=50, ckpt=None, obsWeights=None, l2=0.0):
     assert len(docs) == len(labels)
     maxNumSteps = 0
     ndocs = len(docs)
@@ -285,7 +288,8 @@ def trainRnn(docs, labels, embeddingFile, miniBatchSize=-1, initWeightFile=None,
                                                                                                    seed=seed, initEmbeddings=embeddingArray,
                                                                                                    learningRate=lr/miniBatchSize, rnnType=rnnType,
                                                                                                    stackedDimList=stackedDimList, task=task,
-                                                                                                   cell=cell, tokenSize=tokenSize, nclass=nclass)
+                                                                                                   cell=cell, tokenSize=tokenSize, nclass=nclass,
+                                                                                                   l2=l2)
     tv_dict = dict()
     for v in tf.trainable_variables():
         tv_dict[v.name] = v

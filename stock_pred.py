@@ -29,6 +29,7 @@ parser.add_argument('--batchSize', help='number of obs in a mini-batch', default
 parser.add_argument('--epochs', help='number of iterations for training', default=10, type=int)
 parser.add_argument('--stepSize', help='number of steps before multiplying learning rate by gamma', default=20, type=int)
 parser.add_argument('--gamma', help='gamma for adjusting learning rate', default=0.9, type=float)
+parser.add_argument('--l2', help='l2 regularization coefficient', default=0.0, type=float)
 parser.add_argument('--modelPath', help='path to model files', default='./model.ckpt', type=str)
 
 if __name__ == '__main__':
@@ -42,6 +43,7 @@ if __name__ == '__main__':
     epochs = args.epochs
     step_size = args.stepSize
     gamma = args.gamma
+    l2 = args.l2
     model_path = args.modelPath
     if args.tokenSize and args.numSteps:
         token_size = args.tokenSize
@@ -57,7 +59,7 @@ if __name__ == '__main__':
         trainRnn(inputs, targets, None,
                  lr=learning_rate, epochs=epochs, rnnType='uni', task='perseq', stackedDimList=[1024], cell='gru',
                  miniBatchSize=batch_size, tokenSize=token_size, nclass=len(targetBins)+1, seed=32145, gamma=gamma,
-                 step_size=step_size, ckpt=model_path, obsWeights=weights)
+                 step_size=step_size, ckpt=model_path, obsWeights=weights, l2=l2)
     elif task.lower() == 'score':
         scoreRnn(model_path, inputs, labels=targets, obsWeights=weights)
     else:
